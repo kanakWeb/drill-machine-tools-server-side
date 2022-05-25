@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const app = express();
 const {
@@ -29,6 +30,31 @@ async function run() {
     const purchaseCollection = client
       .db("Drill_machine_tool")
       .collection("purchase");
+    const userCollection = client
+      .db("Drill_machine_tool")
+      .collection("users");
+
+    app.put("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await userCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+
+      const token = jwt.sign(
+        { email: email },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1h" }
+      );
+      res.send({result,token});
+    });
 
     // get service tool home page
     app.get("/service", async (req, res) => {
@@ -50,7 +76,6 @@ async function run() {
       const query = { clientEmail: clientEmail };
       const purchase = await purchaseCollection.find(query).toArray();
       res.send(purchase);
-     
     });
 
     //purchase post
@@ -58,7 +83,6 @@ async function run() {
       const purchase = req.body;
       const result = await purchaseCollection.insertOne(purchase);
       res.send(result);
-      console.log(result);
     });
   } finally {
   }
