@@ -21,6 +21,25 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "UnAuthorize access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(
+    token,
+    process.env.ACCESS_TOKEN_SECRET,
+    function (err, decoded) {
+      if (err) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+      req.decoded = decoded;
+      next();
+    }
+  );
+}
+
 async function run() {
   try {
     await client.connect();
@@ -53,7 +72,7 @@ async function run() {
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "1h" }
       );
-      res.send({result,token});
+      res.send({ result, token });
     });
 
     // get service tool home page
@@ -71,11 +90,18 @@ async function run() {
     });
 
     //get per my purchase
-    app.get("/purchase", async (req, res) => {
+    app.get("/purchase", verifyJWT, async (req, res) => {
       const clientEmail = req.query.clientEmail;
-      const query = { clientEmail: clientEmail };
-      const purchase = await purchaseCollection.find(query).toArray();
-      res.send(purchase);
+      const decodedEmail = req.decoded.email;
+      if (clientEmail === decodedEmail) {
+        const query = { clientEmail: clientEmail };
+        const purchase = await purchaseCollection
+          .find(query)
+          .toArray();
+        res.send(purchase);
+      } else {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
     });
 
     //purchase post
@@ -83,6 +109,12 @@ async function run() {
       const purchase = req.body;
       const result = await purchaseCollection.insertOne(purchase);
       res.send(result);
+    });
+
+    //all user get
+    app.get("/user", async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
     });
   } finally {
   }
