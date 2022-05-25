@@ -36,7 +36,7 @@ async function run() {
       res.send(service);
     });
 
-    //get purchase service
+    //get purchase
     app.get("/service/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -44,14 +44,22 @@ async function run() {
       res.send(service);
     });
 
+    //get per my purchase
+    app.get("/purchase", async (req, res) => {
+      const clientEmail = req.query.clientEmail;
+      const query = { clientEmail: clientEmail };
+      const purchase = await purchaseCollection.find(query).toArray();
+      res.send(purchase);
+     
+    });
 
-app.post('/purchase',async(req,res)=>{
-  const purchase=req.body;
-  const query={}
-  const result=await purchaseCollection.insertOne(purchase)
-  res.send(result)
-})
-
+    //purchase post
+    app.post("/purchase", async (req, res) => {
+      const purchase = req.body;
+      const result = await purchaseCollection.insertOne(purchase);
+      res.send(result);
+      console.log(result);
+    });
   } finally {
   }
 }
