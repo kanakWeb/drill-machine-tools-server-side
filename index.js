@@ -52,6 +52,9 @@ async function run() {
     const userCollection = client
       .db("Drill_machine_tool")
       .collection("users");
+    const reviewCollection = client
+      .db("Drill_machine_tool")
+      .collection("review");
 
     //make admin
     app.get("/admin/:email", async (req, res) => {
@@ -146,6 +149,13 @@ async function run() {
     app.get("/user", verifyJWT, async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
+    });
+
+    //post-- add review
+    app.post("/review", async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
     });
   } finally {
   }
