@@ -53,7 +53,15 @@ async function run() {
       .db("Drill_machine_tool")
       .collection("users");
 
-    //admin make
+    //make admin
+    app.get("/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({ email: email });
+      const isAdmin = user.role === "admin";
+      res.send({ admin: isAdmin });
+    });
+
+    //admin filter
 
     app.put("/user/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
@@ -71,9 +79,8 @@ async function run() {
           updateDoc
         );
         res.send(result);
-      }
-      else{
-        res.status(403).send({message:'Forbidden access'})
+      } else {
+        res.status(403).send({ message: "Forbidden access" });
       }
     });
 
