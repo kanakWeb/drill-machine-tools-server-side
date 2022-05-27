@@ -59,7 +59,9 @@ async function run() {
     const reviewCollection = client
       .db("Drill_machine_tool")
       .collection("review");
-
+    const paymentCollection = client
+      .db("Drill_machine_tool")
+      .collection("payment");
     //make admin
     app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
@@ -118,7 +120,7 @@ async function run() {
       const token = jwt.sign(
         { email: email },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "1d" }
       );
       res.send({ result, token });
     });
@@ -129,17 +131,21 @@ async function run() {
       res.send(service);
     });
 
-    app.post("/create-payment-intent",verifyJWT, async (req, res) => {
-      const service = req.body;
-      const price = service.servicePrice;
-      const amount = parseFloat(price) * 100;
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-      res.send({ clientSecret: paymentIntent.client_secret });
-    });
+    app.post(
+      "/create-payment-intent",
+      verifyJWT,
+      async (req, res) => {
+        const service = req.body;
+        const price = service.servicePrice;
+        const amount = parseFloat(price) * 100;
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({ clientSecret: paymentIntent.client_secret });
+      }
+    );
 
     //get purchase
     app.get("/service/:id", async (req, res) => {
@@ -207,6 +213,26 @@ async function run() {
       const query = { _id: ObjectId(id) };
       const purchase = await purchaseCollection.findOne(query);
       res.send(purchase);
+    });
+
+    app.patch("/purchase/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      console.log(payment);
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const result = await paymentCollection.insertOne(payment);
+      const updatedPurchase = await purchaseCollection.updateOne(
+        filter,
+        updateDoc
+      );
+
+      res.send({ updatedPurchase });
     });
   } finally {
   }
