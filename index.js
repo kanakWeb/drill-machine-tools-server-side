@@ -218,7 +218,6 @@ async function run() {
     app.patch("/purchase/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const payment = req.body;
-      console.log(payment);
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
         $set: {
