@@ -2,12 +2,16 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const app = express();
+
 const {
   MongoClient,
   ServerApiVersion,
   ObjectId,
 } = require("mongodb");
+
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+const app = express();
 const port = process.env.PORT || 5000;
 
 //middleware
@@ -64,15 +68,27 @@ async function run() {
       res.send({ admin: isAdmin });
     });
 
-    //admin filter
-
-    app.put("/user/admin/:email", verifyJWT, async (req, res) => {
-      const email = req.params.email;
+    //verify admin
+    const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
       const requesterAccount = await userCollection.findOne({
         email: requester,
       });
       if (requesterAccount.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ message: "Forbidden" });
+      }
+    };
+
+    //admin filter
+
+    app.put(
+      "/user/admin/:email",
+      verifyAdmin,
+      verifyJWT,
+      async (req, res) => {
+        const email = req.params.email;
         const filter = { email: email };
         const updateDoc = {
           $set: { role: "admin" },
@@ -82,10 +98,8 @@ async function run() {
           updateDoc
         );
         res.send(result);
-      } else {
-        res.status(403).send({ message: "Forbidden access" });
       }
-    });
+    );
 
     app.put("/user/:email", async (req, res) => {
       const email = req.params.email;
@@ -113,6 +127,18 @@ async function run() {
     app.get("/service", async (req, res) => {
       const service = await servicesCollection.find().toArray();
       res.send(service);
+    });
+
+    app.post("/create-payment-intent",verifyJWT, async (req, res) => {
+      const service = req.body;
+      const price = service.servicePrice;
+      const amount = parseFloat(price) * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({ clientSecret: paymentIntent.client_secret });
     });
 
     //get purchase
@@ -145,6 +171,12 @@ async function run() {
       res.send(result);
     });
 
+    //all purchase
+    app.get("/allPurchase", async (req, res) => {
+      const allPurchase = await purchaseCollection.find().toArray();
+      res.send(allPurchase);
+    });
+
     //all user get
     app.get("/user", verifyJWT, async (req, res) => {
       const users = await userCollection.find().toArray();
@@ -162,6 +194,19 @@ async function run() {
     app.get("/review", async (req, res) => {
       const review = await reviewCollection.find().toArray();
       res.send(review);
+    });
+
+    app.post("/addService", async (req, res) => {
+      const addService = req.body;
+      const result = await servicesCollection.insertOne(addService);
+      res.send(result);
+    });
+
+    app.get("/purchase/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const purchase = await purchaseCollection.findOne(query);
+      res.send(purchase);
     });
   } finally {
   }
