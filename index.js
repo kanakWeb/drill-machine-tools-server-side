@@ -120,7 +120,7 @@ async function run() {
       const token = jwt.sign(
         { email: email },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "1d" }
+        { expiresIn: "1h" }
       );
       res.send({ result, token });
     });
@@ -232,6 +232,22 @@ async function run() {
       );
 
       res.send({ updatedPurchase });
+    });
+
+    //delete service from all manage service
+    app.delete("/service/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await servicesCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //delete purchase service
+    app.delete("/purchase/:id",async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await purchaseCollection.deleteOne(query);
+      res.send(result);
     });
   } finally {
   }
